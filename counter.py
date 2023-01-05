@@ -3,10 +3,6 @@ from selenium. webdriver.common.by import By
 import time
 import threading
 import json
-import urllib3
-from bs4 import BeautifulSoup as bs
-
-website = 'https://www.linkedin.com/jobs/search/?currentJobId=3362372256&f_TPR=r604800&geoId=103366113&keywords=Software%20Engineer&location=Vancouver%2C%20British%20Columbia%2C%20Canada&refresh=true'
 
 def count(summary:str, wordbank:dict, i: int ):
     wordlist = summary.replace('\n', ' ').split(' ')
@@ -18,77 +14,96 @@ def count(summary:str, wordbank:dict, i: int ):
     print('finish counting %ith job summary ' %i)
 
 def main():
+    with open('data.json','r') as file:
+        data = json.load(file)
+
     option = webdriver.ChromeOptions()
     option.add_argument('headless')
-    # option.add_argument("--window-size=1920,1080")
-    driver = webdriver.Chrome(options = option)
-    driver.get(website)
+    driver = webdriver.Chrome(options=option)
 
-    # for _ in range(0,10):
-    #    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-    #    time.sleep(2)
-    # print('finish scrolling \n')
+    driver.get('https://www.linkedin.com/jobs/search/?currentJobId=3419565601&distance=25&f_F=eng&f_I=6%2C4&f_JT=F&f_TPR=r604800&geoId=103366113&keywords=Software%20Engineer%20NOT%20Salesperson%20NOT%20General%20NOT%20General%20Services%20NOT%20General%20NOT%20General&location=Vancouver%2C%20British%20Columbia%2C%20Canada&refresh=true&sortBy=R')
+    driver.find_element(By.XPATH,'/html/body/div[1]/header/nav/div/a[2]').click()
+    username = driver.find_element(By.XPATH,'//*[@id="username"]')
+    username.send_keys(data['username'])
 
-    hreflist = []
-    wordbank = {}
-
-    for i in range(1,26):
-        xpath = '//*[@id="main-content"]/section[2]/ul/li[%i]/div/a'%i
+    password = driver.find_element(By.XPATH,'//*[@id="password"]')
+    password.send_keys(data['password'])
+    time.sleep(1)
+    driver.find_element(By.XPATH,'//*[@id="organic-div"]/form/div[3]/button').click()
+    input('paused')
+    
+    page =2
+    linklist = []
+    while page<=3:
+        joblist = driver.find_element(By.XPATH,'//*[@id="main"]/div/section[1]/div/ul')
+        jobs = joblist.find_elements(By.TAG_NAME,'li')
+        for job in jobs:
+            driver.execute_script('arguments[0].scrollIntoView()',job)
+            try:
+                links = job.find_elements(By.TAG_NAME,'a')
+                if(len(links)>0):
+                    linklist.append(links[0].get_attribute('href'))
+            except:
+                print('not found')
+                continue
         try:
-            job = driver.find_element(By.XPATH,xpath)
-            hreflist.append(job.get_attribute('href'))
+            buttons = driver.find_elements(By.TAG_NAME, 'button')
+            for button in buttons:
+                if button.get_attribute('aria-label')=='Page '+str(page):
+                    button.click()
+                    page+=1
+                    time.sleep(2)
+                    break
         except:
-            print('xpath has something wrong ')
-
-    print('hreflist has ',len(hreflist),'job links')
-    threads = []
-    detail = webdriver.Chrome()
-    i = j = 0
+            print('broken')
+            break
+    print('finish fetching')
+    print('length: ',len(linklist))
+    threads = []    
+    i=j=0
     faillist = []
+    wordbank= {}
 
-    for href in hreflist:
-        detail.get(href)
-        # try:
-        #     button = driver.find_element(By.XPATH,'//*[@id="main-content"]/section[1]/div/div/section[1]/div/div/section/button[1]')
-        #     # button.click()
-        # except:
-        #     print('button has problem')
-        # finally:
-        #     input('asdf')
-        #     time.sleep(1)
+    for href in linklist:
+        driver.get(href)
+        summary = ''
         try:
-            _ = detail.find_element(By.TAG_NAME,'ul')
-            html = urllib3.PoolManager().request('get',href)
-            praser = bs(html.data,'html.parser')
+            lilist = []
+            article = driver.find_element(By.TAG_NAME,'article')
+            ullist = article.find_elements(By.TAG_NAME,'ul')
+            for ul in ullist:
+                lilist+=ul.find_elements(By.TAG_NAME,'li')
+            
+            print(len(lilist))
+            for li in lilist:
+                try:
+                    text = li.get_attribute('innerHTML')
+                    text = text.replace('<br>','')
+                    text = text.replace('</br>','')
 
-            div = praser.find('div',class_= 'show-more-less-html__markup show-more-less-html__markup--clamp-after-5')
-            summary = 'set()'
-            with open('content.txt','w') as file:
-                file.write(div.prettify())
-            for child in div.descendants:
-                content = child.string
-                if content is not None:
-                    summary+=' '+content.get_text()
+                    summary += text
+                except:
+                    print('?????')
+                    continue
+            # input('found li tag paused')
+            summary += article.text
+
         except:
             try:
-                summary = detail.find_element(By.XPATH,'//*[@id="main-content"]/section[1]/div/div/section[1]/div/div/section/div').text
-                # print(summary)
-                time.sleep(10)
-                input('asfasdf')
+                # summary = driver.find_element(By.XPATH,'//*[@id="main-content"]/section[1]/div/div/section[1]/div/div/section/div').text
+                summary = driver.find_element(By.TAG_NAME,'article').text
+                print(type(summary))
             except:
+                print('failed')
                 faillist.append(href)
+                input('paused')
+                time.sleep(10)
                 continue
-        
 
+        time.sleep(10)
         with open('./jobdata/job#%i.txt'%i,'w')as file:
             file.write(summary)
             i+=1
-        # quit()
-        # if i ==3:
-        #     print(summary)
-        #     input('asfasdf')
-        #     quit()
-        input('adsf')
         threads.append(threading.Thread(target= count, args= (summary,wordbank,j)))
         j+=1
         threads[-1].start()
