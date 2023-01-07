@@ -18,7 +18,7 @@ def main():
         data = json.load(file)
 
     option = webdriver.ChromeOptions()
-    option.add_argument('headless')
+    # option.add_argument('headless')
     driver = webdriver.Chrome(options=option)
 
     driver.get('https://www.linkedin.com/jobs/search/?currentJobId=3419565601&distance=25&f_F=eng&f_I=6%2C4&f_JT=F&f_TPR=r604800&geoId=103366113&keywords=Software%20Engineer%20NOT%20Salesperson%20NOT%20General%20NOT%20General%20Services%20NOT%20General%20NOT%20General&location=Vancouver%2C%20British%20Columbia%2C%20Canada&refresh=true&sortBy=R')
@@ -34,7 +34,7 @@ def main():
     
     page =2
     linklist = []
-    while page<=3:
+    while page<=10:
         joblist = driver.find_element(By.XPATH,'//*[@id="main"]/div/section[1]/div/ul')
         jobs = joblist.find_elements(By.TAG_NAME,'li')
         for job in jobs:
@@ -66,6 +66,9 @@ def main():
 
     for href in linklist:
         driver.get(href)
+        input('paused')
+        continue
+
         summary = ''
         try:
             lilist = []
@@ -81,7 +84,7 @@ def main():
                     text = text.replace('<br>','')
                     text = text.replace('</br>','')
 
-                    summary += text
+                    summary += ' '+text
                 except:
                     print('?????')
                     continue
@@ -123,5 +126,36 @@ def main():
     with open('./result/bank.json','w') as file:
         file.write(wordbank)
 
+
+def preload(path):
+    # with open('text.txt','r') as file:
+    #     vocab = file.read()
+    #     return vocab
+
+    with open(path,'r') as file:
+        vocab = json.load(file)
+        return vocab
+
+def select(vocab1,vocab2,wordbank):
+    bank = {}
+    for word in wordbank:
+        if word.lower() in vocab1 and word.lower()not in vocab2:
+            if word.lower() not in bank:
+                bank[word.lower()] = wordbank[word]
+            else:
+                bank[word.lower()] += wordbank[word]
+    return bank
+
 if __name__ == '__main__':
     main()
+
+    # with open('./result/bank.json','r') as file:
+    #     wordbank = json.load(file)
+    # with open('./corpus/csavl-s.json','r') as file:
+    #     vocab1 = json.load(file)
+    # with open('./corpus/text.txt','r') as file:
+    #     vocab2 = file.read()
+    # with open('./result/banks.json','w') as file:
+    #     bank = select(vocab1,vocab2,wordbank)
+    #     bank = json.dumps(bank,indent= 4)
+    #     file.write(bank)

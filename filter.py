@@ -4,6 +4,7 @@ import time
 import json
 
 def main():
+    
     with open('data.json','r') as file:
         data = json.load(file)
 
