@@ -3,22 +3,25 @@ from selenium. webdriver.common.by import By
 import time
 import json
 
+Username = 'username2'
+Password = 'password2'
+
 def main():
-    
+    titles = ['senior','sr.' ,'staff' ,'devops' ,'principal','lead','coop']
     with open('data.json','r') as file:
         data = json.load(file)
 
     option = webdriver.ChromeOptions()
-    option.add_argument('headless')
+    # option.add_argument('headless')
     driver = webdriver.Chrome(options=option)
 
-    driver.get('https://www.linkedin.com/jobs/search/?currentJobId=3419565601&distance=25&f_F=eng&f_I=6%2C4&f_JT=F&f_TPR=r604800&geoId=103366113&keywords=Software%20Engineer%20NOT%20Salesperson%20NOT%20General%20NOT%20General%20Services%20NOT%20General%20NOT%20General&location=Vancouver%2C%20British%20Columbia%2C%20Canada&refresh=true&sortBy=R')
+    driver.get('https://www.linkedin.com/jobs/search/?currentJobId=3436527035&f_T=340%2C2732&f_TPR=r604800&geoId=100025096&keywords=data%20engineer&sortBy=R')
     driver.find_element(By.XPATH,'/html/body/div[1]/header/nav/div/a[2]').click()
     username = driver.find_element(By.XPATH,'//*[@id="username"]')
-    username.send_keys(data['username'])
+    username.send_keys(data[Username])
 
     password = driver.find_element(By.XPATH,'//*[@id="password"]')
-    password.send_keys(data['password'])
+    password.send_keys(data[Password])
     time.sleep(1)
     driver.find_element(By.XPATH,'//*[@id="organic-div"]/form/div[3]/button').click()
     input('paused')
@@ -44,20 +47,25 @@ def main():
             except:
                 print('not found')
                 continue
-            if 'Senior' not in title and 'Sr.' not in title and 'Staff' not in title and 'DevOps' not in title and 'Principal' not in title:
+            if not any([x in title.lower() for x in titles]):
                 jobdata[title] = link
         print(jobcount)
 
         try:
             buttons = driver.find_elements(By.TAG_NAME, 'button')
+            found = False
             for button in buttons:
                 if button.get_attribute('aria-label')=='Page '+str(page):
                     button.click()
                     print('clicked page ',page)
                     page+=1
+                    found = True
                     time.sleep(2)
                     break
+            if not found:
+               break
         except:
+            input('wrong')
             print('broken')
             break
     jobdata = json.dumps(jobdata,indent= 4)

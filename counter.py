@@ -4,6 +4,10 @@ import time
 import threading
 import json
 
+Username = 'username2'
+Password = 'password2'
+
+
 def count(summary:str, wordbank:dict, i: int ):
     wordlist = summary.replace('\n', ' ').split(' ')
     for word in wordlist:
@@ -13,7 +17,7 @@ def count(summary:str, wordbank:dict, i: int ):
             wordbank[word]+=1
     print('finish counting %ith job summary ' %i)
 
-def main():
+def count():
     with open('data.json','r') as file:
         data = json.load(file)
 
@@ -24,10 +28,10 @@ def main():
     driver.get('https://www.linkedin.com/jobs/search/?currentJobId=3419565601&distance=25&f_F=eng&f_I=6%2C4&f_JT=F&f_TPR=r604800&geoId=103366113&keywords=Software%20Engineer%20NOT%20Salesperson%20NOT%20General%20NOT%20General%20Services%20NOT%20General%20NOT%20General&location=Vancouver%2C%20British%20Columbia%2C%20Canada&refresh=true&sortBy=R')
     driver.find_element(By.XPATH,'/html/body/div[1]/header/nav/div/a[2]').click()
     username = driver.find_element(By.XPATH,'//*[@id="username"]')
-    username.send_keys(data['username'])
+    username.send_keys(data['username2'])
 
     password = driver.find_element(By.XPATH,'//*[@id="password"]')
-    password.send_keys(data['password'])
+    password.send_keys(data['password2'])
     time.sleep(1)
     driver.find_element(By.XPATH,'//*[@id="organic-div"]/form/div[3]/button').click()
     input('paused')
@@ -146,16 +150,81 @@ def select(vocab1,vocab2,wordbank):
                 bank[word.lower()] += wordbank[word]
     return bank
 
-if __name__ == '__main__':
-    main()
+def skill():
+    with open('data.json','r') as file:
+        data = json.load(file)
 
-    # with open('./result/bank.json','r') as file:
-    #     wordbank = json.load(file)
-    # with open('./corpus/csavl-s.json','r') as file:
-    #     vocab1 = json.load(file)
-    # with open('./corpus/text.txt','r') as file:
-    #     vocab2 = file.read()
-    # with open('./result/banks.json','w') as file:
-    #     bank = select(vocab1,vocab2,wordbank)
-    #     bank = json.dumps(bank,indent= 4)
-    #     file.write(bank)
+    option = webdriver.ChromeOptions()
+    # option.add_argument('headless')
+    driver = webdriver.Chrome(options=option)
+
+    driver.get('https://www.linkedin.com/jobs/search/?currentJobId=3436527035&f_T=340%2C2732&f_TPR=r604800&geoId=100025096&keywords=data%20engineer&sortBy=R')
+    driver.find_element(By.XPATH,'/html/body/div[1]/header/nav/div/a[2]').click()
+    username = driver.find_element(By.XPATH,'//*[@id="username"]')
+    username.send_keys(data[Username])
+
+    password = driver.find_element(By.XPATH,'//*[@id="password"]')
+    password.send_keys(data[Password])
+    time.sleep(1)
+    driver.find_element(By.XPATH,'//*[@id="organic-div"]/form/div[3]/button').click()
+    input('paused')
+    
+    page =2
+    lastpage = ''
+    linklist = []
+    while page<=10:
+        joblist = driver.find_element(By.XPATH,'//*[@id="main"]/div/section[1]/div/ul')
+        jobs = joblist.find_elements(By.TAG_NAME,'li')
+        for job in jobs:
+            driver.execute_script('arguments[0].scrollIntoView()',job)
+            try:
+                links = job.find_elements(By.TAG_NAME,'a')
+                if(len(links)>0):
+                    linklist.append(links[0].get_attribute('href'))
+            except:
+                print('not found')
+                continue
+        try:
+            buttons = driver.find_elements(By.TAG_NAME, 'button')
+            find = False
+            for button in buttons:
+                label = button.get_attribute('aria-label')
+                if label =='Page '+str(page) :
+                    button.click()
+                    page+=1
+                    find = True
+                    time.sleep(2)
+                    break
+            if not find:
+                break
+        except:
+            print('broken')
+            break
+    print('finish fetching')
+    skillBank = {}
+    for href in linklist:
+        driver.get(href)
+        try:
+            _ = driver.find_element(By.XPATH,'/html/body/div[5]/div[3]/div/div[1]/div[1]/div/div[1]/div/div/div[1]/div[2]/ul/div/button').click()
+            time.sleep(5)
+            ullist = driver.find_elements(By.TAG_NAME,'ul')
+            
+            sklist = ullist[0].find_elements(By.TAG_NAME,'li')
+            for skill in sklist:
+                req = skill.text.replace('\nAdd','').lower()
+                if req not in skillBank:
+                    skillBank[req] = 1
+                else:
+                    skillBank[req]+=1
+         
+            
+        except:
+            pass
+        time.sleep(10)
+    skillBank = dict(sorted(skillBank .items(), key= lambda x:x[1], reverse= True))
+    skillBank = json.dumps(skillBank,indent=4)
+    with open('./result/skillbank.json','w') as file:
+        file.write(skillBank)
+if __name__ == '__main__':
+    skill()
+    
